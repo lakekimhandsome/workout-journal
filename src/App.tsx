@@ -307,6 +307,7 @@ function App() {
         ? current.filter((id) => id !== sessionId)
         : [...current, sessionId],
     )
+    setRevealedSessionDeletes((current) => current.filter((id) => id !== sessionId))
   }
 
   const updateSessionCategory = (sessionId: string, categoryId: string) => {
@@ -700,8 +701,16 @@ function App() {
                   : 'session-swipe-row'
               }
               key={session.id}
-              onTouchStart={(event) => handleSwipeStart('session', session.id, event)}
-              onTouchEnd={(event) => handleSwipeEnd('session', session.id, event)}
+              onTouchStart={(event) => {
+                if (!isExpanded) {
+                  handleSwipeStart('session', session.id, event)
+                }
+              }}
+              onTouchEnd={(event) => {
+                if (!isExpanded) {
+                  handleSwipeEnd('session', session.id, event)
+                }
+              }}
             >
               <button
                 className="session-swipe-delete"
