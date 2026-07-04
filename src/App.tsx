@@ -611,7 +611,7 @@ function App() {
             onClick={() => setTimerOpen((open) => !open)}
           >
             <span>휴식</span>
-            <strong>{formatTimer(remainingSeconds)}</strong>
+            <strong>{formatTimer(timerRunning ? remainingSeconds : restSeconds)}</strong>
             <small>{timerRunning ? '진행 중' : `${formatTimerPreset(restSeconds)} 설정`}</small>
           </button>
           <button className="timer-stop" type="button" onClick={stopRestTimer}>
@@ -693,11 +693,11 @@ function App() {
             : ''
 
           return (
-            <article
+            <div
               className={
                 revealedSessionDeletes.includes(session.id)
-                  ? 'session-card delete-revealed'
-                  : 'session-card'
+                  ? 'session-swipe-row delete-revealed'
+                  : 'session-swipe-row'
               }
               key={session.id}
               onTouchStart={(event) => handleSwipeStart('session', session.id, event)}
@@ -710,6 +710,7 @@ function App() {
               >
                 삭제
               </button>
+              <article className="session-card">
               <div className="session-header">
                 <button
                   className="expand-button"
@@ -883,7 +884,8 @@ function App() {
                   )}
                 </div>
               )}
-            </article>
+              </article>
+            </div>
           )
         })}
       </section>

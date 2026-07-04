@@ -224,9 +224,16 @@
   padding: 28px;
 }
 
+.session-swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+}
+
 .session-card {
   position: relative;
   overflow: hidden;
+  transition: transform 0.18s ease;
 }
 
 .session-header {
@@ -234,7 +241,6 @@
   z-index: 1;
   background: var(--card);
   padding: 14px;
-  transition: transform 0.18s ease;
 }
 
 .expand-button {
@@ -512,17 +518,17 @@
   .session-swipe-delete {
     display: inline-flex;
     position: absolute;
-    top: 14px;
-    right: 14px;
+    inset: 0 0 0 auto;
     z-index: 0;
     width: 72px;
-    height: 42px;
+    height: auto;
     border-color: #fecaca;
+    border-radius: 20px;
     background: #fee2e2;
     color: #b91c1c;
   }
 
-  .session-card.delete-revealed .session-header {
+  .session-swipe-row.delete-revealed .session-card {
     transform: translateX(-88px);
   }
 
