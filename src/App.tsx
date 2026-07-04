@@ -312,6 +312,10 @@ function App() {
         : [...current, sessionId],
     )
     setRevealedSessionDeletes((current) => current.filter((id) => id !== sessionId))
+    setRevealedExerciseDeletes((current) => {
+      const sessionExerciseIds = getSessionExercises(sessionId).map((exercise) => exercise.id)
+      return current.filter((id) => !sessionExerciseIds.includes(id))
+    })
   }
 
   const updateSessionCategory = (sessionId: string, categoryId: string) => {
@@ -352,7 +356,7 @@ function App() {
     )} [${category?.name ?? '카테고리 없음'}]`
     const lines = getSessionExercises(session.id).map((exercise) => {
       const comment = exercise.comment.trim()
-      const base = `- ${exercise.name} / ${exercise.sets}세트`
+      const base = `- ${exercise.name} x${exercise.sets}`
 
       return comment ? `${base}\n${comment}` : base
     })
@@ -471,13 +475,11 @@ function App() {
 
     if (deltaX < -48) {
       if (type === 'session') {
-        setRevealedSessionDeletes((current) =>
-          current.includes(targetId) ? current : [...current, targetId],
-        )
+        setRevealedSessionDeletes([targetId])
+        setRevealedExerciseDeletes([])
       } else {
-        setRevealedExerciseDeletes((current) =>
-          current.includes(targetId) ? current : [...current, targetId],
-        )
+        setRevealedExerciseDeletes([targetId])
+        setRevealedSessionDeletes([])
       }
     }
 
@@ -624,7 +626,7 @@ function App() {
             <small>{timerRunning ? '진행 중' : `${formatTimerPreset(restSeconds)} 설정`}</small>
           </button>
           <button className="timer-stop" type="button" onClick={stopRestTimer}>
-            종료
+            초기화
           </button>
         </div>
         {timerOpen && (
@@ -889,7 +891,7 @@ function App() {
                           >
                             <span className="previous-exercise-top">
                               <strong>{exercise.name}</strong>
-                              <em>{exercise.sets}세트</em>
+                              <em>x{exercise.sets}</em>
                             </span>
                             {exercise.comment.trim() && <small>{exercise.comment}</small>}
                           </button>
