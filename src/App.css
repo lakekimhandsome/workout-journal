@@ -16,6 +16,7 @@
 .timer-button,
 .top-card,
 .category-card,
+.export-card,
 .session-card,
 .empty-card {
   border: 1px solid var(--border);
@@ -254,6 +255,10 @@
   font-weight: 800;
 }
 
+.session-delete {
+  color: var(--muted);
+}
+
 .session-body {
   display: grid;
   gap: 14px;
@@ -339,6 +344,20 @@
   color: var(--text);
 }
 
+.reference-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.reference-nav span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .previous-exercise-list {
   display: grid;
   gap: 8px;
@@ -373,6 +392,39 @@
   font-weight: 500;
   line-height: 1.35;
   white-space: pre-wrap;
+}
+
+.export-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 20px;
+}
+
+.export-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.export-range label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.export-text {
+  min-height: 360px;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+
+.export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 760px) {
@@ -432,11 +484,24 @@
     width: 100%;
   }
 
+  .session-delete {
+    width: 100%;
+  }
+
   .exercise-card {
     grid-template-columns: 1fr;
   }
 
   .set-control {
     justify-content: space-between;
+  }
+
+  .export-range,
+  .export-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .export-actions {
+    display: grid;
   }
 }

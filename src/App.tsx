@@ -142,7 +142,10 @@ function App() {
   const [remainingSeconds, setRemainingSeconds] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerOpen, setTimerOpen] = useState(false)
-  const [page, setPage] = useState<'home' | 'categories'>('home')
+  const [page, setPage] = useState<'home' | 'categories' | 'export'>('home')
+  const [referenceOffsets, setReferenceOffsets] = useState<Record<string, number>>({})
+  const [exportStartDate, setExportStartDate] = useState('')
+  const [exportEndDate, setExportEndDate] = useState(today())
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -173,12 +176,6 @@ function App() {
 
     return map
   }, [sessions])
-
-  const exerciseNames = useMemo(() => {
-    return [...new Set(exercises.map((exercise) => exercise.name).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    )
-  }, [exercises])
 
   const activeCategoryId = categories.some((category) => category.id === selectedCategoryId)
     ? selectedCategoryId
@@ -244,6 +241,17 @@ function App() {
     ])
   }
 
+  const removeSession = (sessionId: string) => {
+    setSessions((current) => current.filter((session) => session.id !== sessionId))
+    setExercises((current) => current.filter((exercise) => exercise.sessionId !== sessionId))
+    setExpandedSessionIds((current) => current.filter((id) => id !== sessionId))
+    setReferenceOffsets((current) => {
+      const next = { ...current }
+      delete next[sessionId]
+      return next
+    })
+  }
+
   const createCategory = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -299,11 +307,38 @@ function App() {
     )
   }
 
-  const getSessionExercises = (sessionId: string) => {
+  function getSessionExercises(sessionId: string) {
     return exercises
       .filter((exercise) => exercise.sessionId === sessionId)
       .sort((a, b) => a.order - b.order)
   }
+
+  const filteredExportSessions = sortedSessions.filter((session) => {
+    const afterStart = exportStartDate ? session.date >= exportStartDate : true
+    const beforeEnd = exportEndDate ? session.date <= exportEndDate : true
+
+    return afterStart && beforeEnd
+  })
+
+  const exportRangeText = `${exportStartDate || '처음'} ~ ${exportEndDate || '오늘'}`
+  const exportBlocks = filteredExportSessions.map((session) => {
+    const category = categoryById.get(session.categoryId)
+    const sessionTitle = `${formatSessionDate(
+      session.date,
+      duplicateIndexBySession.get(session.id) ?? 0,
+    )} [${category?.name ?? '카테고리 없음'}]`
+    const lines = getSessionExercises(session.id).map((exercise) => {
+      const comment = exercise.comment.trim()
+      const base = `- ${exercise.name} / ${exercise.sets}세트`
+
+      return comment ? `${base}\n${comment}` : base
+    })
+
+    return [sessionTitle, ...lines].join('\n')
+  })
+  const exportText = [`운동일지`, `기간: ${exportRangeText}`, '', ...exportBlocks]
+    .join('\n\n')
+    .trim()
 
   const addExercise = (sessionId: string, name: string) => {
     const trimmedName = name.trim()
@@ -350,7 +385,7 @@ function App() {
     }
   }
 
-  const getPreviousSameCategorySession = (session: Session) => {
+  const getPreviousSameCategorySessions = (session: Session) => {
     return sessions
       .filter(
         (candidate) =>
@@ -358,7 +393,30 @@ function App() {
           candidate.categoryId === session.categoryId &&
           new Date(candidate.createdAt).getTime() < new Date(session.createdAt).getTime(),
       )
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+
+  const moveReference = (sessionId: string, direction: 1 | -1, maxOffset: number) => {
+    setReferenceOffsets((current) => {
+      const currentOffset = current[sessionId] ?? 0
+      const nextOffset = Math.min(Math.max(currentOffset + direction, 0), maxOffset)
+
+      return { ...current, [sessionId]: nextOffset }
+    })
+  }
+
+  const copyExportText = async () => {
+    await window.navigator.clipboard.writeText(exportText)
+  }
+
+  const downloadExportText = () => {
+    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `workout-journal-${exportStartDate || 'start'}-${exportEndDate || 'end'}.txt`
+    link.click()
+    window.URL.revokeObjectURL(url)
   }
 
   if (page === 'categories') {
@@ -435,6 +493,52 @@ function App() {
     )
   }
 
+  if (page === 'export') {
+    return (
+      <main className="app">
+        <header className="page-header">
+          <button type="button" onClick={() => setPage('home')}>
+            ← 기록으로
+          </button>
+          <div>
+            <p className="eyebrow">내보내기</p>
+            <h1>텍스트로 내보내기</h1>
+          </div>
+        </header>
+
+        <section className="export-card">
+          <div className="export-range">
+            <label>
+              시작
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(event) => setExportStartDate(event.target.value)}
+              />
+            </label>
+            <label>
+              끝
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(event) => setExportEndDate(event.target.value)}
+              />
+            </label>
+          </div>
+          <textarea className="export-text" readOnly value={exportText} aria-label="내보낼 텍스트" />
+          <div className="export-actions">
+            <button type="button" onClick={copyExportText}>
+              복사
+            </button>
+            <button className="primary-button" type="button" onClick={downloadExportText}>
+              txt 다운로드
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="app">
       <header className="timer-bar">
@@ -495,6 +599,9 @@ function App() {
           <button type="button" onClick={() => setPage('categories')}>
             카테고리 수정
           </button>
+          <button type="button" onClick={() => setPage('export')}>
+            내보내기
+          </button>
         </div>
       </section>
 
@@ -510,7 +617,12 @@ function App() {
           const category = categoryById.get(session.categoryId)
           const isExpanded = expandedSessionIds.includes(session.id)
           const sessionExercises = getSessionExercises(session.id)
-          const previousSession = getPreviousSameCategorySession(session)
+          const previousSessions = getPreviousSameCategorySessions(session)
+          const referenceOffset = Math.min(
+            referenceOffsets[session.id] ?? 0,
+            Math.max(previousSessions.length - 1, 0),
+          )
+          const previousSession = previousSessions[referenceOffset]
           const previousExercises = previousSession ? getSessionExercises(previousSession.id) : []
           const previousSessionDate = previousSession
             ? formatSessionDate(
@@ -550,16 +662,17 @@ function App() {
                     </option>
                   ))}
                 </select>
+                <button
+                  className="session-delete"
+                  type="button"
+                  onClick={() => removeSession(session.id)}
+                >
+                  삭제
+                </button>
               </div>
 
               {isExpanded && (
                 <div className="session-body">
-                  <datalist id="exercise-suggestions">
-                    {exerciseNames.map((name) => (
-                      <option key={name} value={name} />
-                    ))}
-                  </datalist>
-
                   <div className="exercise-list">
                     {sessionExercises.length === 0 && (
                       <p className="muted">운동 이름만 먼저 추가하세요. 세트와 코멘트는 바로 아래에서 기록합니다.</p>
@@ -611,7 +724,6 @@ function App() {
                     }}
                   >
                     <input
-                      list="exercise-suggestions"
                       value={draftExerciseNames[session.id] ?? ''}
                       onChange={(event) =>
                         setDraftExerciseNames((current) => ({
@@ -631,6 +743,25 @@ function App() {
                         직전 {category?.name ?? '카테고리'} 참고
                         <span>{previousSessionDate}</span>
                       </p>
+                      <div className="reference-nav">
+                        <button
+                          type="button"
+                          disabled={referenceOffset <= 0}
+                          onClick={() => moveReference(session.id, -1, previousSessions.length - 1)}
+                        >
+                          최근
+                        </button>
+                        <span>
+                          {referenceOffset + 1} / {previousSessions.length}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={referenceOffset >= previousSessions.length - 1}
+                          onClick={() => moveReference(session.id, 1, previousSessions.length - 1)}
+                        >
+                          더 전
+                        </button>
+                      </div>
                       <div className="previous-exercise-list">
                         {previousExercises.map((exercise) => (
                           <button
