@@ -251,6 +251,10 @@ function App() {
   }
 
   const removeSession = (sessionId: string) => {
+    if (!window.confirm('이 세션을 삭제할까요? 세션 안의 운동 기록도 함께 삭제됩니다.')) {
+      return
+    }
+
     setSessions((current) => current.filter((session) => session.id !== sessionId))
     setExercises((current) => current.filter((exercise) => exercise.sessionId !== sessionId))
     setExpandedSessionIds((current) => current.filter((id) => id !== sessionId))
@@ -391,6 +395,10 @@ function App() {
   }
 
   const removeExercise = (exerciseId: string) => {
+    if (!window.confirm('이 운동을 삭제할까요?')) {
+      return
+    }
+
     setExercises((current) => current.filter((exercise) => exercise.id !== exerciseId))
     setRevealedExerciseDeletes((current) => current.filter((id) => id !== exerciseId))
   }
@@ -786,22 +794,24 @@ function App() {
                           삭제
                         </button>
                         <div className="exercise-card">
-                          <input
-                            className="exercise-name"
-                            value={exercise.name}
-                            onChange={(event) =>
-                              updateExercise(exercise.id, { name: event.target.value })
-                            }
-                            aria-label="운동 이름 수정"
-                          />
-                          <div className="set-control" aria-label={`${exercise.name} 세트 수`}>
-                            <button type="button" onClick={() => changeSets(exercise, -1)}>
-                              -
-                            </button>
-                            <strong>{exercise.sets}</strong>
-                            <button type="button" onClick={() => changeSets(exercise, 1)}>
-                              +
-                            </button>
+                          <div className="exercise-top-row">
+                            <input
+                              className="exercise-name"
+                              value={exercise.name}
+                              onChange={(event) =>
+                                updateExercise(exercise.id, { name: event.target.value })
+                              }
+                              aria-label="운동 이름 수정"
+                            />
+                            <div className="set-control" aria-label={`${exercise.name} 세트 수`}>
+                              <button type="button" onClick={() => changeSets(exercise, -1)}>
+                                -
+                              </button>
+                              <strong>{exercise.sets}</strong>
+                              <button type="button" onClick={() => changeSets(exercise, 1)}>
+                                +
+                              </button>
+                            </div>
                           </div>
                           <textarea
                             value={exercise.comment}

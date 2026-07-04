@@ -295,7 +295,7 @@
 
 .exercise-card {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto minmax(180px, 1.3fr) auto;
+  grid-template-columns: minmax(280px, 1fr) minmax(180px, 1.3fr) auto;
   gap: 10px;
   align-items: stretch;
   padding: 12px;
@@ -305,12 +305,21 @@
   transition: transform 0.18s ease;
 }
 
+.exercise-top-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .exercise-name {
+  min-width: 0;
   font-weight: 800;
 }
 
 .set-control {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -553,6 +562,11 @@
     position: relative;
     z-index: 1;
     grid-template-columns: 1fr;
+  }
+
+  .exercise-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .set-control {
