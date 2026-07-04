@@ -720,13 +720,9 @@ function App() {
                 >
                   {isExpanded ? '▼' : '▶'}
                 </button>
-                <button
-                  className="session-title"
-                  type="button"
-                  onClick={() => toggleSession(session.id)}
-                >
+                <div className="session-title">
                   {formatSessionDate(session.date, duplicateIndexBySession.get(session.id) ?? 0)}
-                </button>
+                </div>
                 <select
                   className="session-category"
                   value={session.categoryId}
