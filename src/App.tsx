@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent, TouchEvent } from 'react'
 import './App.css'
 
 type Category = {
@@ -29,6 +29,12 @@ type JournalData = {
   categories: Category[]
   sessions: Session[]
   exercises: Exercise[]
+}
+
+type SwipeTarget = {
+  type: 'session' | 'exercise'
+  id: string
+  x: number
 }
 
 const STORAGE_KEY = 'workout-journal:v1'
@@ -146,6 +152,9 @@ function App() {
   const [referenceOffsets, setReferenceOffsets] = useState<Record<string, number>>({})
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState(today())
+  const [revealedSessionDeletes, setRevealedSessionDeletes] = useState<string[]>([])
+  const [revealedExerciseDeletes, setRevealedExerciseDeletes] = useState<string[]>([])
+  const swipeStart = useRef<SwipeTarget | null>(null)
 
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
@@ -245,6 +254,7 @@ function App() {
     setSessions((current) => current.filter((session) => session.id !== sessionId))
     setExercises((current) => current.filter((exercise) => exercise.sessionId !== sessionId))
     setExpandedSessionIds((current) => current.filter((id) => id !== sessionId))
+    setRevealedSessionDeletes((current) => current.filter((id) => id !== sessionId))
     setReferenceOffsets((current) => {
       const next = { ...current }
       delete next[sessionId]
@@ -313,12 +323,20 @@ function App() {
       .sort((a, b) => a.order - b.order)
   }
 
-  const filteredExportSessions = sortedSessions.filter((session) => {
-    const afterStart = exportStartDate ? session.date >= exportStartDate : true
-    const beforeEnd = exportEndDate ? session.date <= exportEndDate : true
+  const filteredExportSessions = [...sortedSessions]
+    .filter((session) => {
+      const afterStart = exportStartDate ? session.date >= exportStartDate : true
+      const beforeEnd = exportEndDate ? session.date <= exportEndDate : true
 
-    return afterStart && beforeEnd
-  })
+      return afterStart && beforeEnd
+    })
+    .sort((a, b) => {
+      if (a.date !== b.date) {
+        return a.date.localeCompare(b.date)
+      }
+
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    })
 
   const exportRangeText = `${exportStartDate || '처음'} ~ ${exportEndDate || '오늘'}`
   const exportBlocks = filteredExportSessions.map((session) => {
@@ -336,7 +354,7 @@ function App() {
 
     return [sessionTitle, ...lines].join('\n')
   })
-  const exportText = [`운동일지`, `기간: ${exportRangeText}`, '', ...exportBlocks]
+  const exportText = [`운동일지 by lakekim`, `기간: ${exportRangeText}`, '', ...exportBlocks]
     .join('\n\n')
     .trim()
 
@@ -373,6 +391,7 @@ function App() {
 
   const removeExercise = (exerciseId: string) => {
     setExercises((current) => current.filter((exercise) => exercise.id !== exerciseId))
+    setRevealedExerciseDeletes((current) => current.filter((id) => id !== exerciseId))
   }
 
   const changeSets = (exercise: Exercise, direction: 1 | -1) => {
@@ -417,6 +436,49 @@ function App() {
     link.download = `workout-journal-${exportStartDate || 'start'}-${exportEndDate || 'end'}.txt`
     link.click()
     window.URL.revokeObjectURL(url)
+  }
+
+  const handleSwipeStart = (
+    type: SwipeTarget['type'],
+    targetId: string,
+    event: TouchEvent<HTMLElement>,
+  ) => {
+    swipeStart.current = { type, id: targetId, x: event.touches[0].clientX }
+  }
+
+  const handleSwipeEnd = (
+    type: SwipeTarget['type'],
+    targetId: string,
+    event: TouchEvent<HTMLElement>,
+  ) => {
+    const start = swipeStart.current
+
+    if (!start || start.type !== type || start.id !== targetId) {
+      return
+    }
+
+    const deltaX = event.changedTouches[0].clientX - start.x
+    swipeStart.current = null
+
+    if (deltaX < -48) {
+      if (type === 'session') {
+        setRevealedSessionDeletes((current) =>
+          current.includes(targetId) ? current : [...current, targetId],
+        )
+      } else {
+        setRevealedExerciseDeletes((current) =>
+          current.includes(targetId) ? current : [...current, targetId],
+        )
+      }
+    }
+
+    if (deltaX > 48) {
+      if (type === 'session') {
+        setRevealedSessionDeletes((current) => current.filter((id) => id !== targetId))
+      } else {
+        setRevealedExerciseDeletes((current) => current.filter((id) => id !== targetId))
+      }
+    }
   }
 
   if (page === 'categories') {
@@ -580,7 +642,6 @@ function App() {
       </header>
 
       <section className="top-card">
-        <p className="eyebrow">새 세션</p>
         <div className="new-session-row">
           <select
             value={activeCategoryId}
@@ -632,7 +693,23 @@ function App() {
             : ''
 
           return (
-            <article className="session-card" key={session.id}>
+            <article
+              className={
+                revealedSessionDeletes.includes(session.id)
+                  ? 'session-card delete-revealed'
+                  : 'session-card'
+              }
+              key={session.id}
+              onTouchStart={(event) => handleSwipeStart('session', session.id, event)}
+              onTouchEnd={(event) => handleSwipeEnd('session', session.id, event)}
+            >
+              <button
+                className="session-swipe-delete"
+                type="button"
+                onClick={() => removeSession(session.id)}
+              >
+                삭제
+              </button>
               <div className="session-header">
                 <button
                   className="expand-button"
@@ -663,7 +740,7 @@ function App() {
                   ))}
                 </select>
                 <button
-                  className="session-delete"
+                  className="session-delete desktop-delete"
                   type="button"
                   onClick={() => removeSession(session.id)}
                 >
@@ -679,39 +756,63 @@ function App() {
                     )}
 
                     {sessionExercises.map((exercise) => (
-                      <div className="exercise-card" key={exercise.id}>
-                        <input
-                          className="exercise-name"
-                          value={exercise.name}
-                          onChange={(event) =>
-                            updateExercise(exercise.id, { name: event.target.value })
-                          }
-                          aria-label="운동 이름 수정"
-                        />
-                        <div className="set-control" aria-label={`${exercise.name} 세트 수`}>
-                          <button type="button" onClick={() => changeSets(exercise, -1)}>
-                            -
-                          </button>
-                          <strong>{exercise.sets}</strong>
-                          <button type="button" onClick={() => changeSets(exercise, 1)}>
-                            +
-                          </button>
-                        </div>
-                        <textarea
-                          value={exercise.comment}
-                          onChange={(event) =>
-                            updateExercise(exercise.id, { comment: event.target.value })
-                          }
-                          placeholder="70 4&#10;발 내리고 몸 틀기"
-                          aria-label={`${exercise.name} 코멘트`}
-                        />
+                      <div
+                        className={
+                          revealedExerciseDeletes.includes(exercise.id)
+                            ? 'exercise-swipe-row delete-revealed'
+                            : 'exercise-swipe-row'
+                        }
+                        key={exercise.id}
+                        onTouchStart={(event) => {
+                          event.stopPropagation()
+                          handleSwipeStart('exercise', exercise.id, event)
+                        }}
+                        onTouchEnd={(event) => {
+                          event.stopPropagation()
+                          handleSwipeEnd('exercise', exercise.id, event)
+                        }}
+                      >
                         <button
-                          className="text-button"
+                          className="exercise-swipe-delete"
                           type="button"
                           onClick={() => removeExercise(exercise.id)}
                         >
                           삭제
                         </button>
+                        <div className="exercise-card">
+                          <input
+                            className="exercise-name"
+                            value={exercise.name}
+                            onChange={(event) =>
+                              updateExercise(exercise.id, { name: event.target.value })
+                            }
+                            aria-label="운동 이름 수정"
+                          />
+                          <div className="set-control" aria-label={`${exercise.name} 세트 수`}>
+                            <button type="button" onClick={() => changeSets(exercise, -1)}>
+                              -
+                            </button>
+                            <strong>{exercise.sets}</strong>
+                            <button type="button" onClick={() => changeSets(exercise, 1)}>
+                              +
+                            </button>
+                          </div>
+                          <textarea
+                            value={exercise.comment}
+                            onChange={(event) =>
+                              updateExercise(exercise.id, { comment: event.target.value })
+                            }
+                            placeholder="70 4&#10;발 내리고 몸 틀기"
+                            aria-label={`${exercise.name} 코멘트`}
+                          />
+                          <button
+                            className="text-button desktop-delete"
+                            type="button"
+                            onClick={() => removeExercise(exercise.id)}
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

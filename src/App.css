@@ -90,10 +90,7 @@
 }
 
 .top-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: center;
+  display: block;
   padding: 16px;
   margin-top: 4px;
 }
@@ -133,8 +130,8 @@
 }
 
 .new-session-row {
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .primary-button {
@@ -228,11 +225,16 @@
 }
 
 .session-card {
+  position: relative;
   overflow: hidden;
 }
 
 .session-header {
+  position: relative;
+  z-index: 1;
+  background: var(--card);
   padding: 14px;
+  transition: transform 0.18s ease;
 }
 
 .expand-button {
@@ -259,6 +261,11 @@
   color: var(--muted);
 }
 
+.session-swipe-delete,
+.exercise-swipe-delete {
+  display: none;
+}
+
 .session-body {
   display: grid;
   gap: 14px;
@@ -274,6 +281,12 @@
   gap: 10px;
 }
 
+.exercise-swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
 .exercise-card {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) auto minmax(180px, 1.3fr) auto;
@@ -283,6 +296,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--soft);
+  transition: transform 0.18s ease;
 }
 
 .exercise-name {
@@ -441,10 +455,13 @@
     align-items: stretch;
   }
 
-  .timer-row,
   .top-card,
   .section-title {
     display: grid;
+  }
+
+  .timer-row {
+    display: flex;
   }
 
   .timer-button {
@@ -452,7 +469,8 @@
   }
 
   .timer-stop {
-    width: 100%;
+    width: auto;
+    min-width: 72px;
   }
 
   .timer-button small {
@@ -461,7 +479,6 @@
   }
 
   .timer-settings,
-  .new-session-row,
   .category-form,
   .exercise-add {
     align-items: stretch;
@@ -469,7 +486,7 @@
   }
 
   .new-session-row {
-    justify-content: stretch;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .session-header {
@@ -488,7 +505,47 @@
     width: 100%;
   }
 
+  .desktop-delete {
+    display: none;
+  }
+
+  .session-swipe-delete {
+    display: inline-flex;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 0;
+    width: 72px;
+    height: 42px;
+    border-color: #fecaca;
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .session-card.delete-revealed .session-header {
+    transform: translateX(-88px);
+  }
+
+  .exercise-swipe-delete {
+    display: inline-flex;
+    position: absolute;
+    inset: 0 0 0 auto;
+    z-index: 0;
+    width: 72px;
+    height: auto;
+    border-color: #fecaca;
+    border-radius: 14px;
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .exercise-swipe-row.delete-revealed .exercise-card {
+    transform: translateX(-88px);
+  }
+
   .exercise-card {
+    position: relative;
+    z-index: 1;
     grid-template-columns: 1fr;
   }
 
