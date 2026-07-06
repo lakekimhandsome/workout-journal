@@ -13,8 +13,11 @@ import {
   type TouchEvent,
 } from 'react'
 import { flushSync } from 'react-dom'
+import { Capacitor } from '@capacitor/core'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { paths } from '../routes/paths'
+import { WatchConnectivity } from '../plugins/watchConnectivity'
+import { pushWatchTimerState } from '../lib/watchSync'
 import {
   applyThresholdHaptics,
   buildImportData,
@@ -94,6 +97,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const [exportEndDate, setExportEndDate] = useState(today())
   const [importText, setImportText] = useState('')
   const [importMessage, setImportMessage] = useState('')
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [swipeOffsets, setSwipeOffsets] = useState<Record<string, number>>({})
   const [activeSwipeKey, setActiveSwipeKey] = useState<string | null>(null)
   const swipeDrag = useRef<SwipeDrag | null>(null)
@@ -107,6 +111,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const pullWasPastThreshold = useRef(false)
   const pullFingerDistanceRef = useRef(0)
   const gestureAxis = useRef<'horizontal' | 'vertical' | null>(null)
+  const handleWatchSetButtonRef = useRef<() => void>(() => {})
+  const stopRestTimerRef = useRef<() => void>(() => {})
 
   const notifyHomeSurfaceMounted = useCallback(() => {
     setHomeSurfaceVersion((version) => version + 1)
@@ -197,8 +203,13 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       timerEndAt.current = null
       saveTimerState(null)
       setTimerRunning(false)
+      pushWatchTimerState({
+        running: false,
+        endTime: null,
+        totalSeconds: timerTotalSeconds.current || restSeconds,
+      })
     }
-  }, [])
+  }, [restSeconds])
 
   useEffect(() => {
     if (!timerRunning) {
@@ -236,6 +247,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     saveTimerState({ endAt, totalSeconds: restSeconds })
     setRemainingSeconds(restSeconds)
     setTimerRunning(true)
+    pushWatchTimerState({
+      running: true,
+      endTime: endAt,
+      totalSeconds: restSeconds,
+    })
   }
 
   const stopRestTimer = () => {
@@ -243,7 +259,48 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     saveTimerState(null)
     setTimerRunning(false)
     setRemainingSeconds(0)
+    pushWatchTimerState({
+      running: false,
+      endTime: null,
+      totalSeconds: restSeconds,
+    })
   }
+
+  const resolveWatchTargetExercise = useCallback((): Exercise | null => {
+    if (selectedExerciseId) {
+      const selected = exercises.find((exercise) => exercise.id === selectedExerciseId)
+
+      if (selected) {
+        return selected
+      }
+    }
+
+    for (const session of sortedSessions) {
+      if (!expandedSessionIds.includes(session.id)) {
+        continue
+      }
+
+      const sessionExercises = exercises
+        .filter((exercise) => exercise.sessionId === session.id)
+        .sort((a, b) => a.order - b.order)
+
+      if (sessionExercises.length > 0) {
+        return sessionExercises[sessionExercises.length - 1]
+      }
+    }
+
+    for (const session of sortedSessions) {
+      const sessionExercises = exercises
+        .filter((exercise) => exercise.sessionId === session.id)
+        .sort((a, b) => a.order - b.order)
+
+      if (sessionExercises.length > 0) {
+        return sessionExercises[sessionExercises.length - 1]
+      }
+    }
+
+    return null
+  }, [exercises, expandedSessionIds, selectedExerciseId, sortedSessions])
 
   const createSession = useCallback(() => {
     const categoryId = categories[0]?.id
@@ -631,11 +688,12 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }
 
     const sessionExercises = getSessionExercises(sessionId)
+    const exerciseId = id()
 
     setExercises((current) => [
       ...current,
       {
-        id: id(),
+        id: exerciseId,
         sessionId,
         name: trimmedName,
         sets: 0,
@@ -643,6 +701,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         order: sessionExercises.length,
       },
     ])
+    setSelectedExerciseId(exerciseId)
     setDraftExerciseNames((current) => ({ ...current, [sessionId]: '' }))
   }
 
@@ -671,10 +730,15 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }
 
     setExercises((current) => current.filter((exercise) => exercise.id !== exerciseId))
+    if (selectedExerciseId === exerciseId) {
+      setSelectedExerciseId(null)
+    }
     clearSwipeOffset('exercise', exerciseId)
   }
 
   const changeSets = (exercise: Exercise, direction: 1 | -1) => {
+    setSelectedExerciseId(exercise.id)
+
     const nextSets = Math.max(0, exercise.sets + direction)
 
     updateExercise(exercise.id, { sets: nextSets })
@@ -683,6 +747,54 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       startRestTimer()
     }
   }
+
+  handleWatchSetButtonRef.current = () => {
+    const exercise = resolveWatchTargetExercise()
+
+    if (exercise) {
+      changeSets(exercise, 1)
+    }
+  }
+
+  stopRestTimerRef.current = stopRestTimer
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return
+    }
+
+    let setButtonListener: { remove: () => Promise<void> } | undefined
+    let timerResetListener: { remove: () => Promise<void> } | undefined
+
+    void WatchConnectivity.addListener('setButtonPressed', () => {
+      handleWatchSetButtonRef.current()
+    }).then((handle) => {
+      setButtonListener = handle
+    })
+
+    void WatchConnectivity.addListener('timerReset', () => {
+      stopRestTimerRef.current()
+    }).then((handle) => {
+      timerResetListener = handle
+    })
+
+    return () => {
+      void setButtonListener?.remove()
+      void timerResetListener?.remove()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return
+    }
+
+    pushWatchTimerState({
+      running: timerRunning,
+      endTime: timerEndAt.current,
+      totalSeconds: timerTotalSeconds.current || restSeconds,
+    })
+  }, [restSeconds, timerRunning])
 
   const getPreviousSameCategorySessions = (session: Session) => {
     const isEarlierSession = (candidate: Session) => {
@@ -800,6 +912,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setActiveSwipeKey(null)
     setNewCategoryName('')
     setNewCategoryColor(PALETTE[0])
+    setSelectedExerciseId(null)
     navigate(paths.home)
   }
 

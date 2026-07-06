@@ -16,6 +16,11 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		752859F92FFC14D700D956CC /* WorkoutJournalWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 752859EF2FFC14D600D956CC /* WorkoutJournalWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A1W000012FED79650016851F /* PhoneWatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1W000022FED79650016851F /* PhoneWatchConnectivityManager.swift */; };
+		A1W000032FED79650016851F /* WatchConnectivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1W000042FED79650016851F /* WatchConnectivityPlugin.swift */; };
+		A1W000052FED79650016851F /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1W000062FED79650016851F /* WatchConnectivity.framework */; };
+		A1W000072FED79650016851F /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1W000062FED79650016851F /* WatchConnectivity.framework */; };
+		A1W000082FED79650016851F /* BridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1W000092FED79650016851F /* BridgeViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +59,10 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		752859EF2FFC14D600D956CC /* WorkoutJournalWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WorkoutJournalWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		A1W000022FED79650016851F /* PhoneWatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneWatchConnectivityManager.swift; sourceTree = "<group>"; };
+		A1W000042FED79650016851F /* WatchConnectivityPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityPlugin.swift; sourceTree = "<group>"; };
+		A1W000062FED79650016851F /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		A1W000092FED79650016851F /* BridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -66,6 +75,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+				A1W000052FED79650016851F /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -73,6 +83,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1W000072FED79650016851F /* WatchConnectivity.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +97,7 @@
 				504EC3061FED79650016851F /* App */,
 				752859F02FFC14D600D956CC /* WorkoutJournalWatch Watch App */,
 				504EC3051FED79650016851F /* Products */,
+				75A760A02FFC2EF90099AECF /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -103,6 +115,9 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				A1W000092FED79650016851F /* BridgeViewController.swift */,
+				A1W000022FED79650016851F /* PhoneWatchConnectivityManager.swift */,
+				A1W000042FED79650016851F /* WatchConnectivityPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -111,6 +126,14 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		75A760A02FFC2EF90099AECF /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A1W000062FED79650016851F /* WatchConnectivity.framework */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -230,6 +253,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				A1W000082FED79650016851F /* BridgeViewController.swift in Sources */,
+				A1W000012FED79650016851F /* PhoneWatchConnectivityManager.swift in Sources */,
+				A1W000032FED79650016851F /* WatchConnectivityPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -443,6 +469,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WorkoutJournalWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutJournalWatch;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.lakekim.workoutjournal;
@@ -488,6 +515,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "WorkoutJournalWatch-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutJournalWatch;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.lakekim.workoutjournal;
