@@ -18,11 +18,13 @@ public class WatchConnectivityPlugin: CAPPlugin, CAPBridgedPlugin {
         let running = call.getBool("running") ?? false
         let endTime = call.getDouble("endTime") ?? 0
         let totalSeconds = call.getInt("totalSeconds") ?? 0
+        let stoppedEndTime = call.getDouble("stoppedEndTime") ?? 0
 
         PhoneWatchConnectivityManager.shared.pushTimerState(
             running: running,
             endTimeMs: endTime,
-            totalSeconds: totalSeconds
+            totalSeconds: totalSeconds,
+            stoppedEndTimeMs: stoppedEndTime
         )
         call.resolve()
     }

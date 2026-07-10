@@ -111,7 +111,9 @@ export function JournalProvider({ children }: { children: ReactNode }) {
   const pullWasPastThreshold = useRef(false)
   const pullFingerDistanceRef = useRef(0)
   const gestureAxis = useRef<'horizontal' | 'vertical' | null>(null)
-  const handleWatchSetButtonRef = useRef<() => void>(() => {})
+  const handleWatchSetButtonRef = useRef<(payload?: { endTime?: number; totalSeconds?: number }) => void>(
+    () => {},
+  )
   const stopRestTimerRef = useRef<() => void>(() => {})
 
   const notifyHomeSurfaceMounted = useCallback(() => {
@@ -200,6 +202,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setRemainingSeconds(remaining)
 
     if (remaining <= 0) {
+      const expiredEndAt = timerEndAt.current
       timerEndAt.current = null
       saveTimerState(null)
       setTimerRunning(false)
@@ -207,6 +210,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         running: false,
         endTime: null,
         totalSeconds: timerTotalSeconds.current || restSeconds,
+        stoppedEndTime: expiredEndAt,
       })
     }
   }, [restSeconds])
@@ -235,26 +239,51 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [syncTimerFromEndAt])
 
-  const startRestTimer = () => {
-    if (restSeconds <= 0) {
+  const startRestTimer = (options?: { endAt?: number; totalSeconds?: number }) => {
+    const totalSeconds =
+      options?.totalSeconds && options.totalSeconds > 0 ? options.totalSeconds : restSeconds
+
+    if (totalSeconds <= 0) {
       return
     }
 
-    const endAt = Date.now() + restSeconds * 1000
+    const requestedEndAt = options?.endAt
+    const endAt =
+      requestedEndAt && Number.isFinite(requestedEndAt)
+        ? requestedEndAt
+        : Date.now() + totalSeconds * 1000
 
-    timerTotalSeconds.current = restSeconds
+    // Watch may sync after the rest window already ended — still record the set,
+    // but do not revive an expired timer.
+    if (endAt <= Date.now()) {
+      const previousEndAt = timerEndAt.current
+      timerEndAt.current = null
+      saveTimerState(null)
+      setRemainingSeconds(0)
+      setTimerRunning(false)
+      pushWatchTimerState({
+        running: false,
+        endTime: null,
+        totalSeconds: restSeconds,
+        stoppedEndTime: previousEndAt,
+      })
+      return
+    }
+
+    timerTotalSeconds.current = totalSeconds
     timerEndAt.current = endAt
-    saveTimerState({ endAt, totalSeconds: restSeconds })
-    setRemainingSeconds(restSeconds)
+    saveTimerState({ endAt, totalSeconds })
+    setRemainingSeconds(getRemainingSecondsFromEndAt(endAt))
     setTimerRunning(true)
     pushWatchTimerState({
       running: true,
       endTime: endAt,
-      totalSeconds: restSeconds,
+      totalSeconds,
     })
   }
 
   const stopRestTimer = () => {
+    const previousEndAt = timerEndAt.current
     timerEndAt.current = null
     saveTimerState(null)
     setTimerRunning(false)
@@ -263,6 +292,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
       running: false,
       endTime: null,
       totalSeconds: restSeconds,
+      stoppedEndTime: previousEndAt,
     })
   }
 
@@ -736,7 +766,11 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     clearSwipeOffset('exercise', exerciseId)
   }
 
-  const changeSets = (exercise: Exercise, direction: 1 | -1) => {
+  const changeSets = (
+    exercise: Exercise,
+    direction: 1 | -1,
+    timerOptions?: { endAt?: number; totalSeconds?: number },
+  ) => {
     setSelectedExerciseId(exercise.id)
 
     const nextSets = Math.max(0, exercise.sets + direction)
@@ -744,16 +778,29 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     updateExercise(exercise.id, { sets: nextSets })
 
     if (direction === 1) {
-      startRestTimer()
+      startRestTimer(timerOptions)
     }
   }
 
-  handleWatchSetButtonRef.current = () => {
+  handleWatchSetButtonRef.current = (payload) => {
     const exercise = resolveWatchTargetExercise()
 
-    if (exercise) {
-      changeSets(exercise, 1)
+    if (!exercise) {
+      return
     }
+
+    const exerciseId = exercise.id
+
+    setSelectedExerciseId(exerciseId)
+    setExercises((current) =>
+      current.map((item) =>
+        item.id === exerciseId ? { ...item, sets: item.sets + 1 } : item,
+      ),
+    )
+    startRestTimer({
+      endAt: payload?.endTime,
+      totalSeconds: payload?.totalSeconds,
+    })
   }
 
   stopRestTimerRef.current = stopRestTimer
@@ -766,8 +813,8 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     let setButtonListener: { remove: () => Promise<void> } | undefined
     let timerResetListener: { remove: () => Promise<void> } | undefined
 
-    void WatchConnectivity.addListener('setButtonPressed', () => {
-      handleWatchSetButtonRef.current()
+    void WatchConnectivity.addListener('setButtonPressed', (payload) => {
+      handleWatchSetButtonRef.current(payload)
     }).then((handle) => {
       setButtonListener = handle
     })
@@ -897,11 +944,18 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     setReferenceOffsets({})
     setDraftExerciseNames({})
     setRestSeconds(DEFAULT_TIMER_SECONDS)
+    const previousEndAt = timerEndAt.current
     timerEndAt.current = null
     saveTimerState(null)
     setRemainingSeconds(0)
     timerTotalSeconds.current = 0
     setTimerRunning(false)
+    pushWatchTimerState({
+      running: false,
+      endTime: null,
+      totalSeconds: DEFAULT_TIMER_SECONDS,
+      stoppedEndTime: previousEndAt,
+    })
     setTimerOpen(false)
     setImportText('')
     setImportMessage('')
